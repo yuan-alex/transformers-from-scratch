@@ -64,26 +64,27 @@ def create_app(
     def generate(req: GenerateRequest) -> dict[str, str]:
         try:
             prompt = build_prompt(req.prompt)
-            text = state["model"].generate(prompt, max_tokens=req.max_tokens)
+            tokens = state["model"].generate(prompt, max_tokens=req.max_tokens)
+            text = state["model"].tokenizer.decode(tokens, skip_special_tokens=True)
             return {"text": text}
         except Exception as exc:
             raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     @app.post("/generate/stream")
     def stream_generate(req: GenerateRequest) -> StreamingResponse:
-        prompt = build_prompt(req.prompt)
+        prompt = state["model"].tokenizer.encode(req.prompt)
 
         def event_stream():
-            text = prompt
-            eos_token = getattr(state["model"].tokenizer, "eos_token", None)
+            tokens = prompt
+            eos_token_id = state["model"].tokenizer.eos_token_id
             try:
                 for _ in range(req.max_tokens):
-                    next_token = state["model"].next_token(text)
-                    text += next_token
-                    payload = json.dumps({"token": next_token})
+                    next_token = state["model"].next_token(tokens)
+                    tokens = jnp.concatenate([tokens, jnp.array([next_token])], axis=0)
+                    payload = json.dumps({"token": state["model"].tokenizer.decode([next_token], skip_special_tokens=True)})
                     yield f"data: {payload}\n\n"
 
-                    if eos_token and next_token == eos_token:
+                    if next_token == eos_token_id:
                         break
 
                 yield "data: [DONE]\n\n"

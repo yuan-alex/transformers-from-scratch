@@ -56,12 +56,9 @@ class GPT2(Model):
                 }
             )
 
-    def next_token(self, input_text):
-        input_tokens = self.tokenizer.encode(input_text)
+    def next_token(self, input_tokens: jnp.ndarray) -> int:
         token_embeddings = self.model_weights["transformer.wte.weight"][input_tokens]
-        pos_embeddings = self.model_weights["transformer.wpe.weight"][
-            : len(input_tokens)
-        ]
+        pos_embeddings = self.model_weights["transformer.wpe.weight"][:len(input_tokens)]
         x = token_embeddings + pos_embeddings
 
         for attn_block, ffn_block in zip(self.attention_blocks, self.ffn_blocks):
@@ -85,4 +82,4 @@ class GPT2(Model):
         token_ids = np.argmax(logits, axis=-1)
 
         next_token_id = int(token_ids[-1])
-        return self.tokenizer.decode(next_token_id, skip_special_tokens=True)
+        return next_token_id

@@ -113,11 +113,8 @@ class SmolLM2(Model):
             }
             self.layers.append(SmolLM2TransformerBlock(weights))
 
-    def next_token(self, input_text: str) -> str:
-        input_tokens = jnp.array(self.tokenizer.encode(input_text))
-        token_embeddings = self.model_weights["model.embed_tokens.weight"][
-            input_tokens
-        ]
+    def next_token(self, input_tokens: jnp.ndarray) -> int:
+        token_embeddings = self.model_weights["model.embed_tokens.weight"][input_tokens]
 
         x = token_embeddings
         for layer in self.layers:
@@ -129,4 +126,4 @@ class SmolLM2(Model):
         token_ids = jnp.argmax(logits[-1, :], axis=-1)
 
         next_token_id = int(token_ids)
-        return self.tokenizer.decode([next_token_id], skip_special_tokens=True)
+        return next_token_id

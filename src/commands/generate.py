@@ -20,18 +20,15 @@ def main():
         from models.gpt2 import GPT2
 
         model = GPT2(cache_dir=cache_dir)
-        prompt = args.prompt
+        prompt = model.tokenizer.encode(args.prompt)
     else:
         from models.smollm2 import SmolLM2
 
         model = SmolLM2(cache_dir=cache_dir)
-        messages = [{"role": "user", "content": args.prompt}]
-        prompt = model.tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
-        )
+        prompt = model.tokenizer.encode(args.prompt)
 
     result = model.generate(prompt, max_tokens=args.max_tokens)
-    print(result)
+    print(model.tokenizer.decode(result, skip_special_tokens=True))
 
 
 if __name__ == "__main__":
