@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "huggingface_hub>=0.28.0",
     "jax>=0.8.1",
     "jupyterlab-vim>=4.1.4",
     "numpy>=2.3.5",
@@ -12,6 +13,9 @@ dependencies = [
     "torch>=2.9.1",
     "transformers>=4.57.3",
 ]
+
+[project.scripts]
+transformer-from-scratch = "main:main"
 
 [dependency-groups]
 dev = [

@@ -1930,6 +1930,7 @@ name = "transformers-from-scratch"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "huggingface-hub" },
     { name = "jax" },
     { name = "jupyterlab-vim" },
     { name = "numpy" },
@@ -1945,6 +1946,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "huggingface-hub", specifier = ">=0.28.0" },
     { name = "jax", specifier = ">=0.8.1" },
     { name = "jupyterlab-vim", specifier = ">=4.1.4" },
     { name = "numpy", specifier = ">=2.3.5" },
