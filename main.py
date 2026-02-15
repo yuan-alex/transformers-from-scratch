@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(_root, "src"))
 def main():
     if len(sys.argv) < 2:
         print("Usage: main.py <command> [options]", file=sys.stderr)
-        print("Commands: generate, inspect-weights", file=sys.stderr)
+        print("Commands: generate, inspect-weights, server", file=sys.stderr)
         sys.exit(1)
 
     cmd = sys.argv[1].lower()
@@ -36,7 +36,7 @@ def main():
         server_main()
     else:
         print(f"Unknown command: {cmd}", file=sys.stderr)
-        print("Commands: generate, inspect-weights", file=sys.stderr)
+        print("Commands: generate, inspect-weights, server", file=sys.stderr)
         sys.exit(1)
 
 

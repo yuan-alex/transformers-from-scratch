@@ -22,4 +22,5 @@ transformer-from-scratch = "main:main"
 [dependency-groups]
 dev = [
     "ipykernel>=7.1.0",
+    "watchfiles>=1.0.3",
 ]
