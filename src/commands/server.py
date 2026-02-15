@@ -1,9 +1,7 @@
 
 import argparse
-import importlib
 import json
 import os
-import time
 from pathlib import Path
 from typing import Any
 
@@ -26,7 +24,7 @@ def parse_args():
     p.add_argument(
         "--dev",
         action="store_true",
-        help="Enable dev mode with hot-reload endpoint for attention code",
+        help="Enable dev mode with uvicorn auto-reload for Python files under src/",
     )
     return p.parse_args()
 
@@ -73,6 +71,7 @@ def create_app(
     @app.post("/generate/stream")
     def stream_generate(req: GenerateRequest) -> StreamingResponse:
         prompt = state["model"].tokenizer.encode(req.prompt)
+        print(prompt)
 
         def event_stream():
             tokens = prompt
@@ -97,69 +96,50 @@ def create_app(
     return app
 
 
+def create_app_from_env() -> FastAPI:
+    """Factory used by uvicorn reload workers."""
+    model_name = os.environ["TRANSFORMERS_MODEL"]
+    cache_dir = os.environ.get("TRANSFORMERS_CACHE_DIR")
+    dev_mode = os.environ.get("TRANSFORMERS_DEV_MODE") == "1"
+    return create_app(model_name=model_name, cache_dir=cache_dir, dev_mode=dev_mode)
+
+
 def main():
     args = parse_args()
-    app = create_app(
-        model_name=args.model, cache_dir=args.cache_dir, dev_mode=args.dev
-    )
-    
+
     if args.dev:
         print("🔥 Dev mode enabled!")
         print("   - Watching src/ for changes")
-        print("   - Auto-reload on file save")
-        print("   - Manual reload: POST /reload")
+        print("   - Auto-reload with uvicorn --reload")
         print()
-        
-        # Set up file watching for auto-reload
-        try:
-            from watchfiles import awatch
-            import asyncio
-            import threading
-            
-            # Get the src directory path
-            src_dir = Path(__file__).parent.parent.absolute()
-            
-            async def watch_and_reload():
-                """Watch for file changes and trigger reload."""
-                async for changes in awatch(src_dir):
-                    # Filter to only Python files
-                    py_changes = [
-                        path for _, path in changes 
-                        if path.endswith('.py')
-                    ]
-                    
-                    if py_changes:
-                        print(f"\n🔄 Detected changes in: {[os.path.basename(p) for p in py_changes]}")
-                        print("   Reloading attention module...")
-                        
-                        try:
-                            # Trigger the same reload logic
-                            import utils.attention
-                            importlib.reload(utils.attention)
-                            
-                            if args.model == "gpt2":
-                                from models import gpt2
-                                importlib.reload(gpt2)
-                            else:
-                                from models import smollm2
-                                importlib.reload(smollm2)
-                            
-                            print("   ✅ Reload complete!\n")
-                        except Exception as e:
-                            print(f"   ❌ Reload failed: {e}\n")
-            
-            def start_watcher():
-                """Start the file watcher in the background."""
-                asyncio.run(watch_and_reload())
-            
-            # Start watcher in background thread
-            watcher_thread = threading.Thread(target=start_watcher, daemon=True)
-            watcher_thread.start()
-            
-        except ImportError:
-            print("⚠️  watchfiles not installed. Auto-reload disabled.")
-            print("   Install with: pip install watchfiles")
-            print("   Or use: POST /reload for manual reload")
-            print()
-    
+
+        src_dir = Path(__file__).parent.parent.absolute()
+        repo_root = src_dir.parent
+
+        # Ensure reload worker processes can import "commands.server"
+        existing_pythonpath = os.environ.get("PYTHONPATH")
+        pythonpath_entries = [str(src_dir)]
+        if existing_pythonpath:
+            pythonpath_entries.append(existing_pythonpath)
+        os.environ["PYTHONPATH"] = os.pathsep.join(pythonpath_entries)
+
+        os.environ["TRANSFORMERS_MODEL"] = args.model
+        if args.cache_dir:
+            os.environ["TRANSFORMERS_CACHE_DIR"] = args.cache_dir
+        else:
+            os.environ.pop("TRANSFORMERS_CACHE_DIR", None)
+        os.environ["TRANSFORMERS_DEV_MODE"] = "1"
+
+        uvicorn.run(
+            "commands.server:create_app_from_env",
+            host="0.0.0.0",
+            port=args.port,
+            reload=True,
+            reload_dirs=[str(src_dir)],
+            app_dir=str(repo_root),
+            factory=True,
+        )
+        return
+
+    app = create_app(model_name=args.model, cache_dir=args.cache_dir, dev_mode=False)
     uvicorn.run(app, host="0.0.0.0", port=args.port)
