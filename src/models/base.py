@@ -19,4 +19,4 @@ class Model(ABC):
             if eos_token and next_token == eos_token:
                 break
 
-        return text
+        return text[len(input_text):]

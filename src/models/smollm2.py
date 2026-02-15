@@ -129,4 +129,4 @@ class SmolLM2(Model):
         token_ids = jnp.argmax(logits[-1, :], axis=-1)
 
         next_token_id = int(token_ids)
-        return self.tokenizer.decode([next_token_id])
+        return self.tokenizer.decode([next_token_id], skip_special_tokens=True)

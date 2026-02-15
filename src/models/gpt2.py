@@ -85,4 +85,4 @@ class GPT2(Model):
         token_ids = np.argmax(logits, axis=-1)
 
         next_token_id = int(token_ids[-1])
-        return self.tokenizer.decode(next_token_id)
+        return self.tokenizer.decode(next_token_id, skip_special_tokens=True)

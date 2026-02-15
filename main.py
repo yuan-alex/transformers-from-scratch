@@ -29,6 +29,11 @@ def main():
 
         sys.argv = ["inspect_weights"] + argv
         inspect_main()
+    elif cmd == "server":
+        from commands.server import main as server_main
+
+        sys.argv = ["server"] + argv
+        server_main()
     else:
         print(f"Unknown command: {cmd}", file=sys.stderr)
         print("Commands: generate, inspect-weights", file=sys.stderr)
