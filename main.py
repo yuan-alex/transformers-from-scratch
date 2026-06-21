@@ -12,7 +12,10 @@ sys.path.insert(0, os.path.join(_root, "src"))
 def main():
     if len(sys.argv) < 2:
         print("Usage: main.py <command> [options]", file=sys.stderr)
-        print("Commands: download, generate, inspect-weights, server", file=sys.stderr)
+        print(
+            "Commands: download, generate, inspect-weights, list-models, server",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     cmd = sys.argv[1].lower()
@@ -34,6 +37,11 @@ def main():
 
         sys.argv = ["inspect_weights"] + argv
         inspect_main()
+    elif cmd == "list-models":
+        from commands.list_models import main as list_models_main
+
+        sys.argv = ["list_models"] + argv
+        list_models_main()
     elif cmd == "server":
         from commands.server import main as server_main
 
@@ -41,7 +49,10 @@ def main():
         server_main()
     else:
         print(f"Unknown command: {cmd}", file=sys.stderr)
-        print("Commands: download, generate, inspect-weights, server", file=sys.stderr)
+        print(
+            "Commands: download, generate, inspect-weights, list-models, server",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
 

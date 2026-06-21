@@ -10,7 +10,6 @@ from utils.hf import (
     load_config,
     attention_dims,
     num_layers,
-    SMOLLM2_REPO,
 )
 
 
@@ -85,16 +84,15 @@ class SmolLM2TransformerBlock:
 
 
 class SmolLM2(Model):
-    def __init__(self, cache_dir: str | None = None, repo_id: str | None = None) -> None:
+    def __init__(self, repo_id: str, cache_dir: str | None = None) -> None:
         self.layers = []
 
-        tokenizer = load_smollm2_tokenizer(cache_dir=cache_dir, repo_id=repo_id)
+        tokenizer = load_smollm2_tokenizer(repo_id=repo_id, cache_dir=cache_dir)
         super().__init__(tokenizer)
 
-        self.model_weights = load_smollm2_weights(cache_dir=cache_dir, repo_id=repo_id)
+        self.model_weights = load_smollm2_weights(repo_id=repo_id, cache_dir=cache_dir)
 
-        resolved_repo = repo_id or SMOLLM2_REPO
-        config = load_config(resolved_repo, cache_dir=cache_dir)
+        config = load_config(repo_id, cache_dir=cache_dir)
         hidden_dim, num_heads, num_kv_heads = attention_dims(config, self.model_weights)
 
         layers_count = num_layers(config)

@@ -1,4 +1,4 @@
-import numpy as np
+import jax.numpy as jnp
 
 from models.base import Model
 from utils.norms import LayerNorm
@@ -9,11 +9,11 @@ from utils.hf import load_gpt2_weights, load_gpt2_tokenizer
 
 
 class GPT2(Model):
-    def __init__(self, cache_dir: str | None = None, repo_id: str | None = None) -> None:
-        tokenizer = load_gpt2_tokenizer(cache_dir=cache_dir, repo_id=repo_id)
+    def __init__(self, repo_id: str, cache_dir: str | None = None) -> None:
+        tokenizer = load_gpt2_tokenizer(repo_id=repo_id, cache_dir=cache_dir)
         super().__init__(tokenizer)
 
-        self.model_weights = load_gpt2_weights(cache_dir=cache_dir, repo_id=repo_id)
+        self.model_weights = load_gpt2_weights(repo_id=repo_id, cache_dir=cache_dir)
 
         self.attention_blocks = []
         self.ffn_blocks = []
@@ -22,9 +22,13 @@ class GPT2(Model):
             # Attention block (LayerNorm + Attention)
             ln_1_weight = self.model_weights[f"transformer.h.{i}.ln_1.weight"]
             ln_1_bias = self.model_weights[f"transformer.h.{i}.ln_1.bias"]
-            attn_c_attn_weight = self.model_weights[f"transformer.h.{i}.attn.c_attn.weight"]
+            attn_c_attn_weight = self.model_weights[
+                f"transformer.h.{i}.attn.c_attn.weight"
+            ]
             attn_c_attn_bias = self.model_weights[f"transformer.h.{i}.attn.c_attn.bias"]
-            attn_c_proj_weight = self.model_weights[f"transformer.h.{i}.attn.c_proj.weight"]
+            attn_c_proj_weight = self.model_weights[
+                f"transformer.h.{i}.attn.c_proj.weight"
+            ]
             attn_c_proj_bias = self.model_weights[f"transformer.h.{i}.attn.c_proj.bias"]
 
             self.attention_blocks.append(
@@ -58,7 +62,9 @@ class GPT2(Model):
 
     def next_token(self, input_tokens: jnp.ndarray) -> int:
         token_embeddings = self.model_weights["transformer.wte.weight"][input_tokens]
-        pos_embeddings = self.model_weights["transformer.wpe.weight"][:len(input_tokens)]
+        pos_embeddings = self.model_weights["transformer.wpe.weight"][
+            : len(input_tokens)
+        ]
         x = token_embeddings + pos_embeddings
 
         for attn_block, ffn_block in zip(self.attention_blocks, self.ffn_blocks):
@@ -79,7 +85,7 @@ class GPT2(Model):
         )(x)
 
         logits = x @ self.model_weights["transformer.wte.weight"].T
-        token_ids = np.argmax(logits, axis=-1)
+        token_ids = jnp.argmax(logits, axis=-1)
 
         next_token_id = int(token_ids[-1])
         return next_token_id

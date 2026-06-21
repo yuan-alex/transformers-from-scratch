@@ -109,7 +109,9 @@ class MultiHeadAttention:
 
 
 class GroupedQueryAttention:
-    def __init__(self, wq, wk, wv, wo, num_heads=9, num_kv_heads=3, hidden_dim=576) -> None:
+    def __init__(
+        self, wq, wk, wv, wo, num_heads=9, num_kv_heads=3, hidden_dim=576
+    ) -> None:
         self.wq, self.wk, self.wv, self.wo = wq, wk, wv, wo
         self.q_count = num_heads
         self.kv_count = num_kv_heads

@@ -9,11 +9,10 @@ from transformers import AutoConfig, AutoTokenizer
 
 # --- GPT2 ---
 
-GPT2_REPO = "erwanf/gpt2-mini"
 GPT2_FILENAME = "model.safetensors"
 
 
-def load_gpt2_weights(cache_dir: str | None = None, repo_id: str = GPT2_REPO):
+def load_gpt2_weights(repo_id: str, cache_dir: str | None = None):
     """Download and load GPT2 weights as numpy dict (safetensors)."""
     model_file = hf_hub_download(
         repo_id=repo_id,
@@ -23,18 +22,17 @@ def load_gpt2_weights(cache_dir: str | None = None, repo_id: str = GPT2_REPO):
     return load_file(model_file)
 
 
-def load_gpt2_tokenizer(cache_dir: str | None = None, repo_id: str = GPT2_REPO):
+def load_gpt2_tokenizer(repo_id: str, cache_dir: str | None = None):
     """Load GPT2 tokenizer."""
     return AutoTokenizer.from_pretrained(repo_id, cache_dir=cache_dir)
 
 
 # --- SmolLM2 ---
 
-SMOLLM2_REPO = "HuggingFaceTB/SmolLM2-135M-Instruct"
 SMOLLM2_FILENAME = "model.safetensors"
 
 
-def load_smollm2_weights(cache_dir: str | None = None, repo_id: str = SMOLLM2_REPO):
+def load_smollm2_weights(repo_id: str, cache_dir: str | None = None):
     """Download and load SmolLM2 weights as JAX-friendly dict (bfloat16 -> float32)."""
     model_file = hf_hub_download(
         repo_id=repo_id,
@@ -51,7 +49,7 @@ def load_smollm2_weights(cache_dir: str | None = None, repo_id: str = SMOLLM2_RE
     return weights
 
 
-def load_smollm2_tokenizer(cache_dir: str | None = None, repo_id: str = SMOLLM2_REPO):
+def load_smollm2_tokenizer(repo_id: str, cache_dir: str | None = None):
     """Load SmolLM2 tokenizer."""
     return AutoTokenizer.from_pretrained(repo_id, cache_dir=cache_dir)
 
@@ -61,8 +59,9 @@ def load_smollm2_tokenizer(cache_dir: str | None = None, repo_id: str = SMOLLM2_
 DEFAULT_WEIGHTS_FILENAME = "model.safetensors"
 
 
-def load_repo_weights(repo_id: str, cache_dir: str | None = None,
-                      filename: str = DEFAULT_WEIGHTS_FILENAME):
+def load_repo_weights(
+    repo_id: str, cache_dir: str | None = None, filename: str = DEFAULT_WEIGHTS_FILENAME
+):
     """Download and load weights for an arbitrary HF repo as a numpy dict."""
     model_file = hf_hub_download(
         repo_id=repo_id,
@@ -90,9 +89,8 @@ def attention_dims(config: dict, weights: dict) -> tuple[int, int, int]:
     """Infer (hidden_dim, num_heads, num_kv_heads) from config or weights."""
     hidden_dim = config.get("hidden_size")
     num_heads = config.get("num_attention_heads")
-    num_kv_heads = (
-        config.get("num_key_value_heads")
-        or config.get("num_attention_heads")
+    num_kv_heads = config.get("num_key_value_heads") or config.get(
+        "num_attention_heads"
     )
     if hidden_dim is None:
         hidden_dim = weights["model.embed_tokens.weight"].shape[-1]

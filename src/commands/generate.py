@@ -5,11 +5,19 @@ import argparse
 
 def parse_args():
     p = argparse.ArgumentParser(description="Generate text from a prompt.")
-    p.add_argument("--arch", choices=("gpt2", "smollm2"), required=True,
-                   help="Architecture to use for inference")
-    p.add_argument("--repo", type=str, default=None,
-                   help="Override HuggingFace repo id for weights/tokenizer "
-                        "(must be compatible with --arch architecture)")
+    p.add_argument(
+        "--arch",
+        choices=("gpt2", "smollm2"),
+        required=True,
+        help="Architecture to use for inference",
+    )
+    p.add_argument(
+        "--repo",
+        type=str,
+        required=True,
+        help="HuggingFace repo id for weights/tokenizer "
+        "(must be compatible with --arch)",
+    )
     p.add_argument("--prompt", type=str, required=True)
     p.add_argument("--max-tokens", type=int, default=10)
     p.add_argument("--cache-dir", type=str, default=None)
