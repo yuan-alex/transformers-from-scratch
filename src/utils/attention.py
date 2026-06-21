@@ -2,11 +2,50 @@ import jax
 import jax.numpy as jnp
 
 
-def rope(x, dim, base=10000.0):
+def compute_inv_freq(dim, base=10000.0, rope_scaling=None):
+    """Inverse RoPE frequencies, optionally adjusted by a rope_scaling config.
+
+    Supports the "llama3" scaling type used by Llama 3.1/3.2 (HF
+    `_compute_llama3_parameters`). Unknown/absent scaling falls back to the
+    default frequencies (correct for SmolLM2 and Llama < 3.1).
+    """
+    inv_freq = 1.0 / (base ** (jnp.arange(0, dim, 2).astype(jnp.float32) / dim))
+
+    if not rope_scaling:
+        return inv_freq
+
+    rope_type = rope_scaling.get("rope_type") or rope_scaling.get("type")
+    if rope_type != "llama3":
+        # Other scaling types (linear, dynamic, yarn, ...) not implemented.
+        return inv_freq
+
+    factor = rope_scaling["factor"]
+    low_freq_factor = rope_scaling["low_freq_factor"]
+    high_freq_factor = rope_scaling["high_freq_factor"]
+    old_context_len = rope_scaling["original_max_position_embeddings"]
+
+    low_freq_wavelen = old_context_len / low_freq_factor
+    high_freq_wavelen = old_context_len / high_freq_factor
+
+    wavelen = 2 * jnp.pi / inv_freq
+    # Long wavelengths (low freq): scale down by `factor`.
+    inv_freq_llama = jnp.where(wavelen > low_freq_wavelen, inv_freq / factor, inv_freq)
+    # Medium wavelengths: smoothly interpolate between scaled and unscaled.
+    smooth = (old_context_len / wavelen - low_freq_factor) / (
+        high_freq_factor - low_freq_factor
+    )
+    smoothed = (1 - smooth) * inv_freq_llama / factor + smooth * inv_freq_llama
+    is_medium = (wavelen <= low_freq_wavelen) & (wavelen >= high_freq_wavelen)
+    inv_freq_llama = jnp.where(is_medium, smoothed, inv_freq_llama)
+    # Short wavelengths (high freq): left untouched.
+    return inv_freq_llama
+
+
+def rope(x, dim, base=10000.0, rope_scaling=None):
     seq_len = x.shape[-2]
 
     # Compute frequencies
-    inv_freq = 1.0 / (base ** (jnp.arange(0, dim, 2).astype(jnp.float32) / dim))
+    inv_freq = compute_inv_freq(dim, base, rope_scaling)
 
     # Compute angles for each position
     t = jnp.arange(seq_len, dtype=jnp.float32)
@@ -110,7 +149,16 @@ class MultiHeadAttention:
 
 class GroupedQueryAttention:
     def __init__(
-        self, wq, wk, wv, wo, num_heads=9, num_kv_heads=3, hidden_dim=576, rope_theta=10000.0
+        self,
+        wq,
+        wk,
+        wv,
+        wo,
+        num_heads=9,
+        num_kv_heads=3,
+        hidden_dim=576,
+        rope_theta=10000.0,
+        rope_scaling=None,
     ) -> None:
         self.wq, self.wk, self.wv, self.wo = wq, wk, wv, wo
         self.q_count = num_heads
@@ -118,6 +166,7 @@ class GroupedQueryAttention:
         self.head_dim = hidden_dim // num_heads
         self.hidden_dim = hidden_dim
         self.rope_theta = rope_theta
+        self.rope_scaling = rope_scaling
 
     def __call__(self, x):
         seq_len = x.shape[0]
@@ -133,8 +182,8 @@ class GroupedQueryAttention:
         v = v.reshape(seq_len, self.kv_count, self.head_dim).transpose(1, 0, 2)
 
         # rope
-        q = rope(q, self.head_dim, base=self.rope_theta)
-        k = rope(k, self.head_dim, base=self.rope_theta)
+        q = rope(q, self.head_dim, base=self.rope_theta, rope_scaling=self.rope_scaling)
+        k = rope(k, self.head_dim, base=self.rope_theta, rope_scaling=self.rope_scaling)
 
         # expand k and v to match q
         if self.q_count != self.kv_count:

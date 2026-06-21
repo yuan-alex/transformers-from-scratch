@@ -41,13 +41,20 @@ class SmolLM2MLP:
 
 class SmolLM2TransformerBlock:
     def __init__(
-        self, weights, num_heads, num_kv_heads, hidden_dim, rope_theta=10000.0
+        self,
+        weights,
+        num_heads,
+        num_kv_heads,
+        hidden_dim,
+        rope_theta=10000.0,
+        rope_scaling=None,
     ) -> None:
         self.weights = weights
         self.num_heads = num_heads
         self.num_kv_heads = num_kv_heads
         self.hidden_dim = hidden_dim
         self.rope_theta = rope_theta
+        self.rope_scaling = rope_scaling
 
     def __call__(self, x):
         ans = x.copy()
@@ -63,6 +70,7 @@ class SmolLM2TransformerBlock:
                 num_kv_heads=self.num_kv_heads,
                 hidden_dim=self.hidden_dim,
                 rope_theta=self.rope_theta,
+                rope_scaling=self.rope_scaling,
             ),
         ]
         layer_2 = [
@@ -99,6 +107,7 @@ class SmolLM2(Model):
         config = load_config(repo_id, cache_dir=cache_dir)
         hidden_dim, num_heads, num_kv_heads = attention_dims(config, self.model_weights)
         rope_theta = config.get("rope_theta", 10000.0)
+        rope_scaling = config.get("rope_scaling")
 
         layers_count = num_layers(config)
         for i in range(layers_count):
@@ -138,6 +147,7 @@ class SmolLM2(Model):
                     num_kv_heads=num_kv_heads,
                     hidden_dim=hidden_dim,
                     rope_theta=rope_theta,
+                    rope_scaling=rope_scaling,
                 )
             )
 
@@ -150,7 +160,11 @@ class SmolLM2(Model):
 
         x = RMSNorm(self.model_weights["model.norm.weight"])(x)
 
-        logits = x @ self.model_weights["model.embed_tokens.weight"].T
+        # Untied models ship a separate lm_head; tied models reuse the embedding.
+        lm_head = self.model_weights.get(
+            "lm_head.weight", self.model_weights["model.embed_tokens.weight"]
+        )
+        logits = x @ lm_head.T
         token_ids = jnp.argmax(logits[-1, :], axis=-1)
 
         next_token_id = int(token_ids)
