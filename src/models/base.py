@@ -11,8 +11,9 @@ class Model(ABC):
     def next_token(self, input_tokens: jnp.ndarray) -> int:
         pass
 
-    def generate(self, input_tokens: jnp.ndarray, max_tokens: int = 100) -> jnp.ndarray:
-        tokens = input_tokens
+    def generate(self, input_tokens, max_tokens: int = 100) -> jnp.ndarray:
+        tokens = jnp.asarray(input_tokens)
+        input_len = tokens.shape[0]
         eos_token_id = self.tokenizer.eos_token_id
 
         for _ in range(max_tokens):
@@ -21,4 +22,4 @@ class Model(ABC):
             if next_token == eos_token_id:
                 break
 
-        return tokens[len(input_tokens):]
+        return tokens[input_len:]

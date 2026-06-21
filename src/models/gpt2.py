@@ -9,11 +9,11 @@ from utils.hf import load_gpt2_weights, load_gpt2_tokenizer
 
 
 class GPT2(Model):
-    def __init__(self, cache_dir: str | None = None) -> None:
-        tokenizer = load_gpt2_tokenizer(cache_dir=cache_dir)
+    def __init__(self, cache_dir: str | None = None, repo_id: str | None = None) -> None:
+        tokenizer = load_gpt2_tokenizer(cache_dir=cache_dir, repo_id=repo_id)
         super().__init__(tokenizer)
 
-        self.model_weights = load_gpt2_weights(cache_dir=cache_dir)
+        self.model_weights = load_gpt2_weights(cache_dir=cache_dir, repo_id=repo_id)
 
         self.attention_blocks = []
         self.ffn_blocks = []

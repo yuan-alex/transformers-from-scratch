@@ -19,7 +19,7 @@ class GenerateRequest(BaseModel):
 
 def parse_args():
     p = argparse.ArgumentParser(description="Start a server for the model.")
-    p.add_argument("--model", choices=("gpt2", "smollm2"), required=True)
+    p.add_argument("--arch", choices=("gpt2", "smollm2"), required=True)
     p.add_argument("--port", type=int, default=8000)
     p.add_argument("--cache-dir", type=str, default=None)
     p.add_argument(
@@ -96,7 +96,7 @@ def create_app(
 
 def create_app_from_env() -> FastAPI:
     """Factory used by uvicorn reload workers."""
-    model_name = os.environ["TRANSFORMERS_MODEL"]
+    model_name = os.environ["TRANSFORMERS_ARCH"]
     cache_dir = os.environ.get("TRANSFORMERS_CACHE_DIR")
     dev_mode = os.environ.get("TRANSFORMERS_DEV_MODE") == "1"
     return create_app(model_name=model_name, cache_dir=cache_dir, dev_mode=dev_mode)
@@ -121,7 +121,7 @@ def main():
             pythonpath_entries.append(existing_pythonpath)
         os.environ["PYTHONPATH"] = os.pathsep.join(pythonpath_entries)
 
-        os.environ["TRANSFORMERS_MODEL"] = args.model
+        os.environ["TRANSFORMERS_ARCH"] = args.arch
         if args.cache_dir:
             os.environ["TRANSFORMERS_CACHE_DIR"] = args.cache_dir
         else:
@@ -139,5 +139,5 @@ def main():
         )
         return
 
-    app = create_app(model_name=args.model, cache_dir=args.cache_dir, dev_mode=False)
+    app = create_app(model_name=args.arch, cache_dir=args.cache_dir, dev_mode=False)
     uvicorn.run(app, host="0.0.0.0", port=args.port)

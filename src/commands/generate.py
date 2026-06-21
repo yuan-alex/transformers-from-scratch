@@ -5,7 +5,11 @@ import argparse
 
 def parse_args():
     p = argparse.ArgumentParser(description="Generate text from a prompt.")
-    p.add_argument("--model", choices=("gpt2", "smollm2"), required=True)
+    p.add_argument("--arch", choices=("gpt2", "smollm2"), required=True,
+                   help="Architecture to use for inference")
+    p.add_argument("--repo", type=str, default=None,
+                   help="Override HuggingFace repo id for weights/tokenizer "
+                        "(must be compatible with --arch architecture)")
     p.add_argument("--prompt", type=str, required=True)
     p.add_argument("--max-tokens", type=int, default=10)
     p.add_argument("--cache-dir", type=str, default=None)
@@ -15,16 +19,17 @@ def parse_args():
 def main():
     args = parse_args()
     cache_dir = args.cache_dir
+    repo_id = args.repo
 
-    if args.model == "gpt2":
+    if args.arch == "gpt2":
         from models.gpt2 import GPT2
 
-        model = GPT2(cache_dir=cache_dir)
+        model = GPT2(cache_dir=cache_dir, repo_id=repo_id)
         prompt = model.tokenizer.encode(args.prompt)
     else:
         from models.smollm2 import SmolLM2
 
-        model = SmolLM2(cache_dir=cache_dir)
+        model = SmolLM2(cache_dir=cache_dir, repo_id=repo_id)
         prompt = model.tokenizer.encode(args.prompt)
 
     result = model.generate(prompt, max_tokens=args.max_tokens)

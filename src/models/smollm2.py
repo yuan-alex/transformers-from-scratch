@@ -4,7 +4,14 @@ import jax.numpy as jnp
 from models.base import Model
 from utils.norms import RMSNorm
 from utils.attention import GroupedQueryAttention
-from utils.hf import load_smollm2_weights, load_smollm2_tokenizer
+from utils.hf import (
+    load_smollm2_weights,
+    load_smollm2_tokenizer,
+    load_config,
+    attention_dims,
+    num_layers,
+    SMOLLM2_REPO,
+)
 
 
 class SmolLM2MLP:
@@ -34,8 +41,11 @@ class SmolLM2MLP:
 
 
 class SmolLM2TransformerBlock:
-    def __init__(self, weights) -> None:
+    def __init__(self, weights, num_heads, num_kv_heads, hidden_dim) -> None:
         self.weights = weights
+        self.num_heads = num_heads
+        self.num_kv_heads = num_kv_heads
+        self.hidden_dim = hidden_dim
 
     def __call__(self, x):
         ans = x.copy()
@@ -47,6 +57,9 @@ class SmolLM2TransformerBlock:
                 self.weights["self_attn_k_proj"],
                 self.weights["self_attn_v_proj"],
                 self.weights["self_attn_o_proj"],
+                num_heads=self.num_heads,
+                num_kv_heads=self.num_kv_heads,
+                hidden_dim=self.hidden_dim,
             ),
         ]
         layer_2 = [
@@ -72,15 +85,19 @@ class SmolLM2TransformerBlock:
 
 
 class SmolLM2(Model):
-    def __init__(self, cache_dir: str | None = None) -> None:
+    def __init__(self, cache_dir: str | None = None, repo_id: str | None = None) -> None:
         self.layers = []
 
-        tokenizer = load_smollm2_tokenizer(cache_dir=cache_dir)
+        tokenizer = load_smollm2_tokenizer(cache_dir=cache_dir, repo_id=repo_id)
         super().__init__(tokenizer)
 
-        self.model_weights = load_smollm2_weights(cache_dir=cache_dir)
+        self.model_weights = load_smollm2_weights(cache_dir=cache_dir, repo_id=repo_id)
 
-        layers_count = 30
+        resolved_repo = repo_id or SMOLLM2_REPO
+        config = load_config(resolved_repo, cache_dir=cache_dir)
+        hidden_dim, num_heads, num_kv_heads = attention_dims(config, self.model_weights)
+
+        layers_count = num_layers(config)
         for i in range(layers_count):
             weights = {
                 "input_layernorm": self.model_weights[
@@ -111,7 +128,14 @@ class SmolLM2(Model):
                     f"model.layers.{i}.self_attn.v_proj.weight"
                 ],
             }
-            self.layers.append(SmolLM2TransformerBlock(weights))
+            self.layers.append(
+                SmolLM2TransformerBlock(
+                    weights,
+                    num_heads=num_heads,
+                    num_kv_heads=num_kv_heads,
+                    hidden_dim=hidden_dim,
+                )
+            )
 
     def next_token(self, input_tokens: jnp.ndarray) -> int:
         token_embeddings = self.model_weights["model.embed_tokens.weight"][input_tokens]

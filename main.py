@@ -12,13 +12,18 @@ sys.path.insert(0, os.path.join(_root, "src"))
 def main():
     if len(sys.argv) < 2:
         print("Usage: main.py <command> [options]", file=sys.stderr)
-        print("Commands: generate, inspect-weights, server", file=sys.stderr)
+        print("Commands: download, generate, inspect-weights, server", file=sys.stderr)
         sys.exit(1)
 
     cmd = sys.argv[1].lower()
     argv = sys.argv[2:]
 
-    if cmd == "generate":
+    if cmd == "download":
+        from commands.download import main as download_main
+
+        sys.argv = ["download"] + argv
+        download_main()
+    elif cmd == "generate":
         from commands.generate import main as generate_main
 
         # Restore argv so argparse sees only generate args
@@ -36,7 +41,7 @@ def main():
         server_main()
     else:
         print(f"Unknown command: {cmd}", file=sys.stderr)
-        print("Commands: generate, inspect-weights, server", file=sys.stderr)
+        print("Commands: download, generate, inspect-weights, server", file=sys.stderr)
         sys.exit(1)
 
 

@@ -109,11 +109,12 @@ class MultiHeadAttention:
 
 
 class GroupedQueryAttention:
-    def __init__(self, wq, wk, wv, wo, q_count=9, kv_count=3) -> None:
+    def __init__(self, wq, wk, wv, wo, num_heads=9, num_kv_heads=3, hidden_dim=576) -> None:
         self.wq, self.wk, self.wv, self.wo = wq, wk, wv, wo
-        self.q_count = q_count
-        self.kv_count = kv_count
-        self.head_dim = 576 // q_count
+        self.q_count = num_heads
+        self.kv_count = num_kv_heads
+        self.head_dim = hidden_dim // num_heads
+        self.hidden_dim = hidden_dim
 
     def __call__(self, x):
         seq_len = x.shape[0]
@@ -132,8 +133,10 @@ class GroupedQueryAttention:
         q, k = rope(q, self.head_dim), rope(k, self.head_dim)
 
         # expand k and v to match q
-        k = k.repeat(3, axis=0)
-        v = v.repeat(3, axis=0)
+        if self.q_count != self.kv_count:
+            repeats = self.q_count // self.kv_count
+            k = k.repeat(repeats, axis=0)
+            v = v.repeat(repeats, axis=0)
 
         # attention
         attn_scores = (q @ k.transpose(0, 2, 1)) / jnp.sqrt(self.head_dim)
@@ -143,6 +146,6 @@ class GroupedQueryAttention:
         output = attn_probs @ v
 
         # merge heads and project (heads, token, dim) -> (token, heads, dim) -> concatenated (token, dim)
-        output = output.transpose(1, 0, 2).reshape(seq_len, 576)
+        output = output.transpose(1, 0, 2).reshape(seq_len, self.hidden_dim)
 
         return output @ self.wo.T

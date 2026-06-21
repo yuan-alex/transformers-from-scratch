@@ -5,7 +5,7 @@ import argparse
 
 def parse_args():
     p = argparse.ArgumentParser(description="Inspect model weight keys and shapes.")
-    p.add_argument("--model", choices=("gpt2", "smollm2"), required=True)
+    p.add_argument("--arch", choices=("gpt2", "smollm2"), required=True)
     p.add_argument("--limit", type=int, default=None, help="Max number of keys to print")
     p.add_argument("--cache-dir", type=str, default=None)
     return p.parse_args()
@@ -14,7 +14,7 @@ def parse_args():
 def main():
     args = parse_args()
 
-    if args.model == "gpt2":
+    if args.arch == "gpt2":
         from models.gpt2 import GPT2
 
         model = GPT2(cache_dir=args.cache_dir)
