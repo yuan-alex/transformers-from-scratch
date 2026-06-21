@@ -1,7 +1,7 @@
 """HuggingFace download and load helpers."""
 
 import numpy as np
-from huggingface_hub import hf_hub_download
+from huggingface_hub import hf_hub_download, snapshot_download
 from safetensors import safe_open
 from safetensors.numpy import load_file
 from transformers import AutoConfig, AutoTokenizer
@@ -74,6 +74,29 @@ def load_repo_weights(
 def load_repo_tokenizer(repo_id: str, cache_dir: str | None = None):
     """Load tokenizer for an arbitrary HF repo."""
     return AutoTokenizer.from_pretrained(repo_id, cache_dir=cache_dir)
+
+
+# Files needed for inference: config, tokenizer, and safetensors weights.
+# Excludes duplicate .bin weights, training_args.bin, optimizer state, etc.
+INFERENCE_PATTERNS = ["*.json", "*.safetensors", "*.model", "*.txt"]
+
+
+def download_repo(
+    repo_id: str,
+    cache_dir: str | None = None,
+    allow_patterns: list[str] | None = None,
+) -> str:
+    """Download a model repo to the local cache and return its local path.
+
+    Uses huggingface_hub.snapshot_download (the same mechanism transformers'
+    from_pretrained uses), which queries the repo and fetches its files —
+    handling sharded weights — instead of assuming a weights filename.
+    """
+    return snapshot_download(
+        repo_id=repo_id,
+        cache_dir=cache_dir,
+        allow_patterns=allow_patterns if allow_patterns is not None else INFERENCE_PATTERNS,
+    )
 
 
 def load_config(repo_id: str, cache_dir: str | None = None) -> dict:
