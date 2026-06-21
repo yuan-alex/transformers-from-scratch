@@ -1,8 +1,6 @@
 import jax
 import jax.numpy as jnp
 
-from utils.activations import softmax
-
 
 def rope(x, dim, base=10000.0):
     seq_len = x.shape[-2]
@@ -44,7 +42,7 @@ class Attention:
         scores = scores / jnp.sqrt(k.shape[-1])
         causal_mask = jnp.tril(jnp.ones((seq_len, seq_len)))
         scores = jnp.where(causal_mask == 0, -1e10, scores)
-        scores = softmax(scores)
+        scores = jax.nn.softmax(scores, axis=-1)
         out = scores @ v
         out = out @ self.proj_weights + self.proj_bias
         return out
@@ -92,7 +90,7 @@ class MultiHeadAttention:
         scores = jnp.where(causal_mask == 0, -1e10, scores)  # Mask future positions
 
         # 6. Apply softmax to get attention weights
-        attn_weights = softmax(scores, axis=-1)  # (8, seq_len, seq_len)
+        attn_weights = jax.nn.softmax(scores, axis=-1)  # (8, seq_len, seq_len)
 
         # 7. Apply attention weights to values
         output = attn_weights @ v  # (8, seq_len, 64)
