@@ -37,10 +37,13 @@ class Attention:
         self.proj_bias = proj_bias
 
     def __call__(self, x):
+        seq_len = x.shape[0]
         qkv = x @ self.attn_weights + self.attn_bias
         q, k, v = jnp.split(qkv, 3, axis=-1)
         scores = q @ k.T
         scores = scores / jnp.sqrt(k.shape[-1])
+        causal_mask = jnp.tril(jnp.ones((seq_len, seq_len)))
+        scores = jnp.where(causal_mask == 0, -1e10, scores)
         scores = softmax(scores)
         out = scores @ v
         out = out @ self.proj_weights + self.proj_bias
