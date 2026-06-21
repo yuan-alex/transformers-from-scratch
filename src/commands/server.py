@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 from typing import Any
+from jax import numpy as jnp
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
@@ -50,19 +51,19 @@ def create_app(
     def health() -> dict[str, Any]:
         return {"status": "ok", "model": model_name, "dev_mode": dev_mode}
 
-    def build_prompt(raw_prompt: str) -> str:
+    def build_prompt(raw_prompt: str) -> jnp.ndarray:
         if model_name == "smollm2":
             messages = [{"role": "user", "content": raw_prompt}]
-            return state["model"].tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True
-            )
-        return raw_prompt
+            return jnp.array(state["model"].tokenizer.apply_chat_template(
+                messages, tokenize=True, add_generation_prompt=True
+            ))
+        return jnp.array(state["model"].tokenizer.encode(raw_prompt))
 
     @app.post("/generate")
     def generate(req: GenerateRequest) -> dict[str, str]:
         try:
-            prompt = build_prompt(req.prompt)
-            tokens = state["model"].generate(prompt, max_tokens=req.max_tokens)
+            tokens = build_prompt(req.prompt)
+            tokens = state["model"].generate(tokens, max_tokens=req.max_tokens)
             text = state["model"].tokenizer.decode(tokens, skip_special_tokens=True)
             return {"text": text}
         except Exception as exc:
@@ -70,11 +71,8 @@ def create_app(
 
     @app.post("/generate/stream")
     def stream_generate(req: GenerateRequest) -> StreamingResponse:
-        prompt = state["model"].tokenizer.encode(req.prompt)
-        print(prompt)
-
         def event_stream():
-            tokens = prompt
+            tokens = build_prompt(req.prompt)
             eos_token_id = state["model"].tokenizer.eos_token_id
             try:
                 for _ in range(req.max_tokens):
