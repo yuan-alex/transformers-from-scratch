@@ -40,11 +40,14 @@ class SmolLM2MLP:
 
 
 class SmolLM2TransformerBlock:
-    def __init__(self, weights, num_heads, num_kv_heads, hidden_dim) -> None:
+    def __init__(
+        self, weights, num_heads, num_kv_heads, hidden_dim, rope_theta=10000.0
+    ) -> None:
         self.weights = weights
         self.num_heads = num_heads
         self.num_kv_heads = num_kv_heads
         self.hidden_dim = hidden_dim
+        self.rope_theta = rope_theta
 
     def __call__(self, x):
         ans = x.copy()
@@ -59,6 +62,7 @@ class SmolLM2TransformerBlock:
                 num_heads=self.num_heads,
                 num_kv_heads=self.num_kv_heads,
                 hidden_dim=self.hidden_dim,
+                rope_theta=self.rope_theta,
             ),
         ]
         layer_2 = [
@@ -94,6 +98,7 @@ class SmolLM2(Model):
 
         config = load_config(repo_id, cache_dir=cache_dir)
         hidden_dim, num_heads, num_kv_heads = attention_dims(config, self.model_weights)
+        rope_theta = config.get("rope_theta", 10000.0)
 
         layers_count = num_layers(config)
         for i in range(layers_count):
@@ -132,6 +137,7 @@ class SmolLM2(Model):
                     num_heads=num_heads,
                     num_kv_heads=num_kv_heads,
                     hidden_dim=hidden_dim,
+                    rope_theta=rope_theta,
                 )
             )
 

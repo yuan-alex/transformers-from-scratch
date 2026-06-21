@@ -110,13 +110,14 @@ class MultiHeadAttention:
 
 class GroupedQueryAttention:
     def __init__(
-        self, wq, wk, wv, wo, num_heads=9, num_kv_heads=3, hidden_dim=576
+        self, wq, wk, wv, wo, num_heads=9, num_kv_heads=3, hidden_dim=576, rope_theta=10000.0
     ) -> None:
         self.wq, self.wk, self.wv, self.wo = wq, wk, wv, wo
         self.q_count = num_heads
         self.kv_count = num_kv_heads
         self.head_dim = hidden_dim // num_heads
         self.hidden_dim = hidden_dim
+        self.rope_theta = rope_theta
 
     def __call__(self, x):
         seq_len = x.shape[0]
@@ -132,7 +133,8 @@ class GroupedQueryAttention:
         v = v.reshape(seq_len, self.kv_count, self.head_dim).transpose(1, 0, 2)
 
         # rope
-        q, k = rope(q, self.head_dim), rope(k, self.head_dim)
+        q = rope(q, self.head_dim, base=self.rope_theta)
+        k = rope(k, self.head_dim, base=self.rope_theta)
 
         # expand k and v to match q
         if self.q_count != self.kv_count:
