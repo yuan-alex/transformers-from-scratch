@@ -1,5 +1,7 @@
 """HuggingFace download and load helpers."""
 
+import json
+
 import numpy as np
 from huggingface_hub import hf_hub_download, snapshot_download
 from safetensors import safe_open
@@ -27,30 +29,46 @@ def load_gpt2_tokenizer(repo_id: str, cache_dir: str | None = None):
     return AutoTokenizer.from_pretrained(repo_id, cache_dir=cache_dir)
 
 
-# --- SmolLM2 ---
-
-SMOLLM2_FILENAME = "model.safetensors"
+# --- Llama (Llama 2/3, SmolLM2, and other LlamaForCausalLM models) ---
 
 
-def load_smollm2_weights(repo_id: str, cache_dir: str | None = None):
-    """Download and load SmolLM2 weights as JAX-friendly dict (bfloat16 -> float32)."""
-    model_file = hf_hub_download(
-        repo_id=repo_id,
-        filename=SMOLLM2_FILENAME,
-        cache_dir=cache_dir,
-    )
+def _safetensors_shards(repo_id: str, cache_dir: str | None = None) -> list[str]:
+    """Return the safetensors filename(s) for a repo, handling sharding.
+
+    Large checkpoints are split across multiple files with a
+    `model.safetensors.index.json` mapping each tensor to its shard. Small
+    models ship a single `model.safetensors`.
+    """
+    try:
+        index_path = hf_hub_download(
+            repo_id, "model.safetensors.index.json", cache_dir=cache_dir
+        )
+        weight_map = json.load(open(index_path))["weight_map"]
+        return sorted(set(weight_map.values()))
+    except Exception:
+        return ["model.safetensors"]
+
+
+def load_llama_weights(repo_id: str, cache_dir: str | None = None):
+    """Download and load Llama-family weights as JAX-friendly dict (bfloat16 -> float32).
+
+    Discovers the weight file(s) via the safetensors index, so sharded models
+    load too — no assumed filename.
+    """
     weights = {}
-    with safe_open(model_file, framework="jax") as f:
-        for key in f.keys():
-            tensor = f.get_tensor(key)
-            if hasattr(tensor, "dtype") and str(tensor.dtype) == "bfloat16":
-                tensor = tensor.astype(np.float32)
-            weights[key] = tensor
+    for shard in _safetensors_shards(repo_id, cache_dir=cache_dir):
+        shard_path = hf_hub_download(repo_id, shard, cache_dir=cache_dir)
+        with safe_open(shard_path, framework="jax") as f:
+            for key in f.keys():
+                tensor = f.get_tensor(key)
+                if hasattr(tensor, "dtype") and str(tensor.dtype) == "bfloat16":
+                    tensor = tensor.astype(np.float32)
+                weights[key] = tensor
     return weights
 
 
-def load_smollm2_tokenizer(repo_id: str, cache_dir: str | None = None):
-    """Load SmolLM2 tokenizer."""
+def load_llama_tokenizer(repo_id: str, cache_dir: str | None = None):
+    """Load a Llama-family tokenizer."""
     return AutoTokenizer.from_pretrained(repo_id, cache_dir=cache_dir)
 
 

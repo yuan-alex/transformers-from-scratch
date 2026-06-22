@@ -1,4 +1,4 @@
-"""Generate text from a prompt using GPT2 or SmolLM2."""
+"""Generate text from a prompt using GPT2 or Llama."""
 
 import argparse
 
@@ -7,7 +7,7 @@ def parse_args():
     p = argparse.ArgumentParser(description="Generate text from a prompt.")
     p.add_argument(
         "--arch",
-        choices=("gpt2", "smollm2"),
+        choices=("gpt2", "llama"),
         required=True,
         help="Architecture to use for inference",
     )
@@ -35,9 +35,9 @@ def main():
         model = GPT2(cache_dir=cache_dir, repo_id=repo_id)
         prompt = model.tokenizer.encode(args.prompt)
     else:
-        from models.smollm2 import SmolLM2
+        from models.llama import Llama
 
-        model = SmolLM2(cache_dir=cache_dir, repo_id=repo_id)
+        model = Llama(cache_dir=cache_dir, repo_id=repo_id)
         prompt = model.tokenizer.encode(args.prompt)
 
     result = model.generate(prompt, max_tokens=args.max_tokens)

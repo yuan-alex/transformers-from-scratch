@@ -18,7 +18,7 @@ class GenerateRequest(BaseModel):
 
 def parse_args():
     p = argparse.ArgumentParser(description="Start a server for the model.")
-    p.add_argument("--arch", choices=("gpt2", "smollm2"), required=True)
+    p.add_argument("--arch", choices=("gpt2", "llama"), required=True)
     p.add_argument(
         "--repo",
         type=str,
@@ -48,16 +48,16 @@ def create_app(
 
         state["model"] = GPT2(repo_id=repo_id, cache_dir=cache_dir)
     else:
-        from models.smollm2 import SmolLM2
+        from models.llama import Llama
 
-        state["model"] = SmolLM2(repo_id=repo_id, cache_dir=cache_dir)
+        state["model"] = Llama(repo_id=repo_id, cache_dir=cache_dir)
 
     @app.get("/health")
     def health() -> dict[str, Any]:
         return {"status": "ok", "model": model_name, "dev_mode": dev_mode}
 
     def build_prompt(raw_prompt: str) -> jnp.ndarray:
-        if model_name == "smollm2":
+        if model_name == "llama":
             messages = [{"role": "user", "content": raw_prompt}]
             return jnp.array(
                 state["model"].tokenizer.apply_chat_template(

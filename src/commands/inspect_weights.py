@@ -5,7 +5,7 @@ import argparse
 
 def parse_args():
     p = argparse.ArgumentParser(description="Inspect model weight keys and shapes.")
-    p.add_argument("--arch", choices=("gpt2", "smollm2"), required=True)
+    p.add_argument("--arch", choices=("gpt2", "llama"), required=True)
     p.add_argument(
         "--repo",
         type=str,
@@ -27,9 +27,9 @@ def main():
 
         model = GPT2(repo_id=args.repo, cache_dir=args.cache_dir)
     else:
-        from models.smollm2 import SmolLM2
+        from models.llama import Llama
 
-        model = SmolLM2(repo_id=args.repo, cache_dir=args.cache_dir)
+        model = Llama(repo_id=args.repo, cache_dir=args.cache_dir)
 
     keys = list(model.model_weights.keys())
     if args.limit is not None:

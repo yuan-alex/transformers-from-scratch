@@ -5,15 +5,15 @@ from models.base import Model
 from utils.norms import RMSNorm
 from utils.attention import GroupedQueryAttention
 from utils.hf import (
-    load_smollm2_weights,
-    load_smollm2_tokenizer,
+    load_llama_weights,
+    load_llama_tokenizer,
     load_config,
     attention_dims,
     num_layers,
 )
 
 
-class SmolLM2MLP:
+class LlamaMLP:
     def __init__(self, gate_proj, up_proj, down_proj):
         self.gate_proj = gate_proj
         self.up_proj = up_proj
@@ -39,7 +39,7 @@ class SmolLM2MLP:
         return self.swiglu(x)
 
 
-class SmolLM2TransformerBlock:
+class LlamaTransformerBlock:
     def __init__(
         self,
         weights,
@@ -75,7 +75,7 @@ class SmolLM2TransformerBlock:
         ]
         layer_2 = [
             RMSNorm(self.weights["post_attention_layernorm"]),
-            SmolLM2MLP(
+            LlamaMLP(
                 self.weights["mlp_gate_proj"],
                 self.weights["mlp_up_proj"],
                 self.weights["mlp_down_proj"],
@@ -95,14 +95,14 @@ class SmolLM2TransformerBlock:
         return ans
 
 
-class SmolLM2(Model):
+class Llama(Model):
     def __init__(self, repo_id: str, cache_dir: str | None = None) -> None:
         self.layers = []
 
-        tokenizer = load_smollm2_tokenizer(repo_id=repo_id, cache_dir=cache_dir)
+        tokenizer = load_llama_tokenizer(repo_id=repo_id, cache_dir=cache_dir)
         super().__init__(tokenizer)
 
-        self.model_weights = load_smollm2_weights(repo_id=repo_id, cache_dir=cache_dir)
+        self.model_weights = load_llama_weights(repo_id=repo_id, cache_dir=cache_dir)
 
         config = load_config(repo_id, cache_dir=cache_dir)
         hidden_dim, num_heads, num_kv_heads = attention_dims(config, self.model_weights)
@@ -141,7 +141,7 @@ class SmolLM2(Model):
                 ],
             }
             self.layers.append(
-                SmolLM2TransformerBlock(
+                LlamaTransformerBlock(
                     weights,
                     num_heads=num_heads,
                     num_kv_heads=num_kv_heads,
